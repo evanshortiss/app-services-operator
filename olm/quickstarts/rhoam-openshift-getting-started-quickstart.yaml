@@ -54,115 +54,272 @@ spec:
   tags:
     - api
     - management
-  durationMinutes: 10
+  durationMinutes: 15
   description: Learn how to protect a Quarkus API using Red Hat OpenShift API Management.
   prerequisites:
     - You're using Red Hat Developer Sandbox, or have added Red Hat OpenShift API Management to your own OpenShift cluster.
   introduction: >-
     Welcome to the Red Hat OpenShift API Management Getting Started quick start. Red Hat OpenShift API Management install and manages instances of Red Hat 3scale API Management and Red Hat Single Sign-On on an OpenShift cluster.
+
     In this quick start, you'll deploy a Quarkus application on OpenShift, import it into Red Hat 3scale API Management using Service Discovery, and protect it using API Key security.
   tasks:
     - title: Deploy a Quarkus application
       description: >-
-        To create a Quarkus application:
+        To deploy the Quarkus application:
 
         1. Click on the [perspective switcher]{{highlight qs-perspective-switcher}} at the top of the navigation, and select **Developer**.
+
         1. In the navigation menu, click [Add]{{highlight qs-nav-add}}.
-        1. Click the **Project** dropdown menu and select **Create Project** to create a project for your Quarkus application.
-        1. In the **Name** field, enter a name for your new project. Then click **Create**.
-        1. On the **+Add** page, click **From Git**.
-        1. In the **Git Repo URL** field, add
+
+        1. Click the **Project** dropdown menu and select an existing project, or use **Create Project** to create a project for your Quarkus application.
+
+        1. On the **+Add** page, click the **Container Image** tile.
+
+        1. In the **Image name from external registry** field, enter:
+
         ```
-        https://github.com/quarkusio/quarkus-quickstarts
+        quay.io/evanshortiss/rhoam-quarkus-openapi:latest
         ```
-        1. Click on **Show advanced Git options**, which will expose additional fields:
-        1. Add `getting-started` to the **Context dir** field.
-        1. At the end of the form, click **Create**.
+
+        1. Change the **Runtime icon** to Quarkus.
+
+        1. Check the **Create a Route to the Application** box under **Advanced options**.
+
+        1. At the end of the form, click **Create**. This will deploy the application and show the Topology view.
+
+        The application is represented by the light grey area with the white border. The deployment is a white circle.
+
+        1. Click the **Open URL** arrow icon on the deployment.
+
+        1. This opens a new browser window that displays the Quarkus application homepage.
+
+        1. Append `/q/openapi?format=json` to the URL in the address bar to confirm you can access the OpenAPI Spec for the application.
 
       review:
         instructions: |-
-          The application is represented by the light grey area with the white border.  The deployment is a white circle.  Verify that the application was successfully created:
-          1. Do you see a **quarkus-quickstarts-app** application?
-          1. Do you see a **quarkus-quickstarts** deployment?
+          Verify that the application was successfully created:
+          1. Do you see a **rhoam-quarkus-openapi** deployment surrounded by a blue circle?
+          1. Are you able to view the OpenAPI Spec?
         failedTaskHelp: This task isn’t verified yet. Try the task again.
       summary:
         failed: Try the steps again.
         success: Your Quarkus application has been deployed onto OpenShift.
     - title: Annotate the Quarkus application for Service Discovery
       description: >-
-        Red Hat 3scale API Management supports
-        To connect your applications or services to a Kafka instance in the Streams for Apache Kafka web console,
-        you need to create a service account, copy and save the generated credentials, and copy and save the bootstrap server endpoint.
-        You’ll use the service account information later when you configure your application.
+        Service Discovery is a 3scale feature that helps you import services from an OpenShift cluster. The Red Hat 3scale API Management instance provided by Red Hat OpenShift API Management has the [Service Discovery](https://access.redhat.com/documentation/en-us/red_hat_3scale_api_management/2.10/html/admin_portal_guide/service_discovery_from_openshift_to_3scale) feature enabled and pre-configured.
 
-        1. In the **Kafka Instances** page of the web console, for the relevant Kafka instance that you want to connect to,
-        select the options icon (three vertical dots) and click **View connection information**.
 
-        1. In the **Connection** page, copy the **Bootstrap server** endpoint to a secure location.
-        This is the bootstrap server endpoint that you'll need for connecting to this Kafka instance.
+        When Service Discovery is configured, 3scale scans for discoverable API services that are running in the same OpenShift cluster and automatically imports the associated API definitions into 3scale. Additionally, 3scale can update the API integration and its specification, based on OpenAPI Specification (OAS), to resynchronize them with the cluster.
 
-        1. Click **Create service account** to generate the credentials that you'll use to connect to this Kafka instance.
-        Provide a name, for example `my-service-account`. You can leave the description field empty. Click **Create**.
 
-        1. Copy the generated **Client ID** and **Client Secret** to a secure location.
+        You must add annotations and a label to make your Quarkus application available for Service Discovery:
 
-            IMPORTANT: The generated credentials are displayed only one time,
-            so ensure that you have successfully and securely saved the copied credentials before closing the credentials window.
+        1. Navigate to the [Topology View]{{highlight qs-nav-topology}}.
 
-        1. After you save the generated credentials to a secure location, select the confirmation check box in the credentials window and close the window.
+        1. Click the Quarkus Deployment that you created in the previous section. A panel will appear on the right.
 
-            You'll use the boostrap server and service account information that you saved to configure your application to connect to your Kafka instances when you're ready.
-            For example, if you plan to use [Kafkacat](https://github.com/edenhill/kafkacat) to interact with your Kafka instance,
-            you'll use this information to set your bootstrap server and client environment variables.
+        1. Select the **Resources** tab in the panel.
+
+        1. Click **rhoam-quarkus-openapi** link under the **Services** heading to load the **Service details** screen.
+
+        1. Use the **Edit** link beside the **Labels** heading to add a label with the key `discovery.3scale.net` and value `true`.
+
+        1. Scroll down and click the **Annotations** to open the **Edit annotations** dialog for the Service.
+
+        1. Use the **Add more** button to add the following key value pairs:
+            * Key `discovery.3scale.net/description-path`, value `/q/openapi?format=json`.
+            * Key `discovery.3scale.net/port`, value `8080`.
+            * Key `discovery.3scale.net/scheme`, value `http`.
+
+        1. Click the **Save** button after you've added the three annotations.
+
       review:
         instructions: |-
-          Did you save the bootstrap server endpoint to a secure location?
-
-          Did you save the client credentials to a secure location?
+          Are the new annotations and label listed under their respective headings on the **Service details** screen?
         failedTaskHelp: This task isn’t verified yet. Try the task again.
       summary:
         success: >-
           You have completed this task!
         failed: Try the steps again.
-    - title: Creating a Kafka topic in Streams for Apache Kafka
+    - title: Import the API into 3scale API Management
       description: >-
-        When you have a Kafka instance available, you can create Kafka topics to start producing and consuming messages in your services.
+        You are now ready to import the API into 3scale API Management using the Service Discovery feature.
 
-        1. In the **Kafka Instances** page of the web console, click on the name of the Kafka instance that you want to add a topic to.
+        ## Accessing the API Management Dashboard
 
-        1. Click **Create topic** and follow the guided steps to define the topic details.
-        Click **Next** to complete each step and click **Finish** to complete the setup.
+        1. Click on the [Application launcher]{{highlight qs-masthead-applications}} to open it.
 
-            **Topic name**: Enter a unique topic name, such as ```my-first-kafka-topic```.
+        1. Select the **API Management** entry from the list to navigate to your 3scale API Management tenant.
 
-            **Partitions**: Set the number of partitions for this topic. This example sets the partition to ```1``` for a single partition.
-            Partitions are distinct lists of messages within a topic and enable parts of a topic to be distributed over multiple brokers in the cluster.
-            A topic can contain one or more partitions, enabling producer and consumer loads to be scaled.
+        1. Login using the identity provider that applies to you, e.g **DevSandbox**.
 
-            NOTE: You can increase the number of partitions later, but you cannot decrease them.
-
-            **Message retention**: Set the message retention time to the relevant value and increment.
-            This example sets the retention to ```1 day```.
-            Keep the **Retention size** set to ```Unlimited``` (the default).
-            Message retention time is the amount of time that messages are retained in a topic before they are deleted or compacted, depending on the cleanup policy.
+        1. A welcome message is displayed if this is your first time logging into 3scale API Management. Dismiss, or read through welcome message page(s).
 
 
-            **Replicas**: Set the number of partition replicas for the topic and the minimum number of follower replicas that must be in sync with a partition leader.
-            In the current version of Streams for Apache Kafka the values are fixed and set to ```3``` for the number of replicas and ```2``` for the in-sync replicas.
-            Replicas are copies of partitions in a topic.
-            Partition replicas are distributed over multiple brokers in the cluster to ensure topic availability if a broker fails.
-            When a follower replica is in sync with a partition leader, the follower replica can become the new partition leader if needed.
+        You are now at the Red Hat 3scale API Management dashboard.
 
-        After you complete the topic setup, the new Kafka topic is listed in the topics table.
-        You can now start producing and consuming messages to and from this topic using services that you connect to this instance.
+        ## Importing your API
+
+        Your API in 3scale is referred to as a **Product**.
+
+
+        Products can have one or many **Backends**.
+
+
+        A Backend is a web service that 3scale API Management will proxy requests to based on mapping rules defined in the Product.
+
+
+        1. Click the **Create Product** button under the **APIs** heading on the dashboard. This will load the **New Product** screen.
+
+        1. Select the **Import from OpenShift** option. If this option is greyed out, click the **(Authenticate to enable this option)** link to enable it.
+
+        1. After selecting the **Import from OpenShift** option you will be able to use the dropdown fields to select:
+            * The Namespace that contains your Quarkus application.
+            * The **rhoam-quarkus-api** application.
+        1. Click the **Create Product** button.
+
+
+        You will be redirected back to the 3scale API Management dashboard where your new API is listed. If your Quarkus API isn’t listed in the APIs section after a few moments, try refreshing the page.
+
+        ## Verify the API Product and Backend
+
+        You can inspect the **Product** and **Backend** by following these steps:
+
+        1. Select your API from the **Products** list to visit the **Overview** screen.
+
+        1. Click the **ActiveDocs** link on the left and verify that the **rhoam-quarkus-openapi** Swagger 3.0 spec was imported.
+
+        1. Expand the dropdown menu in the top navigation and select **Backends**.
+
+        1. Verify that your **rhoam-quarkus-openapi Backend** is listed. You should also see that it's using a private Service URL, e.g `http://rhoam-quarkus-openapi.user-dev.svc.cluster.local:8080`. 3scale API Management will proxy incoming requests to this private Service URL.
+
       review:
         instructions: |-
-          Is the new Kafka topic listed in the topics table?
+          Are the API Product and Backend listed in 3scale API Management's dashboard?
+        failedTaskHelp: This task isn’t verified yet. Try the task again.
+      summary:
+        success: >-
+          You have completed this task!
+        failed: Try the steps again.
+    - title: Enable API Key Security
+      description: >-
+        3scale routes API requests through proxies known as **APIcast** instances.
+
+
+        The APIcast instances enforce API security rules and policies. API Key security is the default setting for imported APIs.
+
+
+        Since your API is now imported into 3scale API Management, you'll need an API Key to make authenticated requests against it.
+
+
+        ## Obtain the APIcast URL
+
+        1. Click on the [Application launcher]{{highlight qs-masthead-applications}} to open it.
+
+        1. Select the **API Management** entry from the list to navigate to your 3scale API Management tenant.
+
+        1. Login using the identity provider that applies to you, e.g **DevSandbox**.
+
+        1. Select your **rhoam-quarkus-openapi** from the **Products** list.
+
+        1. Navigate to **Integration > Configuration** using the side-menu. Your API is already available via the Staging APIcast, but the `user_key` parameter in the **Example curl for testing** is set to a placeholder.
+
+        1. Copy the URL, e.g `https://user-dev-rhoam-quarkus-openapi-3scale-api.cluster.com/?user_key=USER_KEY`, and visit it in a browser or call it using your preferred HTTP client.
+
+
+        You should have received an **Authentication failed** response since the API Key (`user_key`) placeholder value is not valid.
+
+
+        To obtain an API Key you need to create an **Application Plan** and subscribe an **Application** to that plan.
+
+
+        ## Create an Application Plan
+
+        1. Select your **rhoam-quarkus-openapi** from the **Products** list.
+
+        1. Navigate to **Applications > Application plans** using the side-menu.
+
+        1. Click the **Create Application Plan** button.
+
+        1. Enter following values:
+            * `RHOAM Open API Plan` for **Name**.
+            * `rhoam-openapi-plan` for the **System name**.
+            * Uncheck the **Applications require approval** box.
+        1. Click **Create Application Plan**. You will be redirected to the **Application Plans** listing.
+
+        1. Use the **Publish** link to publish the plan.
+
+
+        ## Create an Application
+
+        Next, you can create an **Application** registered to a developer account:
+
+        1. Expand the dropdown menu in the top navigation of 3scale API Management and select **Audience**.
+
+        1. Choose the **Developer** account from the **Account** listing.
+
+        1. From the **Developer** account page select the **Applications** link at the top.
+
+        1. Click the **Create Application** link.
+
+        1. Use the following details to create the application:
+          1. Select `RHOAM Open API Plan` for the **Application Plan**.
+          1. Use the `Default` **Service Plan**.
+          1. Enter `Developer RHOAM Application` in the **Name** and **Desciption** fields.
+        1. Click the **Create Application** button.
+
+        1. You'll be redirected to the **Developer RHOAM Application** page, and should see a **User Key** listed under the **API Credentials** section.
+
+      review:
+        instructions: |-
+          Is the User Key listed on the **Developer RHOAM Application** page?
+        failedTaskHelp: This task isn’t verified yet. Try the task again.
+      summary:
+        success: >-
+          You have completed this task!
+        failed: Try the steps again.
+    - title: Call the API using your API Key
+      description: >-
+        Now that you have a valid API Key you're ready to make authenticated requests against your API.
+
+        1. Select your **rhoam-quarkus-openapi** from the **Products** list on the 3scale API Management dashboard.
+
+        1. Navigate to **Integration > Configuration** using the side-menu.
+
+        1. Copy the Staging URL, e.g `https://user-dev-rhoam-quarkus-openapi-3scale-api.cluster.com/?user_key=<API_KEY_GOES_HERE>`, and visit it in a browser or using your preferred HTTP client. Make sure to replace the API Key value!
+
+        1. Append `/fruits` to the path, but before the `?user_key` portion of the URL. A list of fruits should be returned in JSON format.
+
+
+        ## Delete the Unprotected Route
+
+        You visited a URL exposed directly by a Route in your OpenShift project in the first section of this guide.
+
+
+        This endpoint was useful for testing, but is unprotected. You can remove this public Route:
+
+        1. Click the **rhoam-quarkus-openapi** deployment in the [Topology View]{{highlight qs-nav-topology}}.
+
+        1. Select the **Resources** tab in the panel that appeared.
+
+        1. Click the **rhoam-quarkus-openapi** item under the **Routes** heading.
+
+        1. Expand the **Actions** dropdown and click **Delete Route**.
+
+
+        Congratulations! The only endpoint available to access your API now enforces API Key security.
+
+      review:
+        instructions: |-
+          Were you able to access the API using your API Key?
         failedTaskHelp: This task isn’t verified yet. Try the task again.
       summary:
         success: >-
           You have completed this task!
         failed: Try the steps again.
   conclusion: >-
-    Congratulations! You successfully completed the Red Hat OpenShift API Management Getting Started quick start,
+    Congratulations!
+
+
+    You successfully completed the Red Hat OpenShift API Management Getting Started quick start,
     and are now ready to use the service.
